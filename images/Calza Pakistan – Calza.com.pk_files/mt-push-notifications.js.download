@@ -1,0 +1,547 @@
+/**
+ * Store front script
+ * contact us(in case of any issue) support@meeripush.com
+ * version 3.0.0
+ */
+
+/**
+ *
+ * @param {URL of CDN} src
+ * @param {Callback function if any} callback
+ */
+function scriptInjection(src, callback) {
+    var s = document.createElement("script");
+    s.type = "text/javascript";
+    s.async = true;
+    s.src = src;
+    var x = document.getElementsByTagName("script")[0];
+    x.parentNode.insertBefore(s, x);
+}
+
+scriptInjection("https://code.jquery.com/jquery-3.7.1.min.js");
+
+/**
+ * Main script starts from here
+ */
+function mtPushNotificationsApp() {
+    /**
+     * Lets define jQuery standalone for app
+     */
+    let pushNotificationJquery = $.noConflict();
+    /**
+     * define URL of server here
+     */
+    let serverURL = "https://meeripush.com/api/store-front/";
+    let domainURL = "https://meeripush.com/";
+    var popupSettings;
+    let shopAddress = Shopify.shop;
+
+    /**
+     * Lets get the user's store URL
+     */
+    let userStoreURL = Shopify.shop;
+
+    function checkDeviceDetails() {
+        return window.matchMedia("only screen and (max-width: 1023px)").matches;
+    }
+
+    function detectOS() {
+        let userAgent = window.navigator.userAgent,
+            platform = window.navigator.platform,
+            macosPlatforms = ["Macintosh", "MacIntel", "MacPPC", "Mac68K"],
+            windowsPlatforms = ["Win32", "Win64", "Windows", "WinCE"],
+            iosPlatforms = ["iPhone", "iPad", "iPod"],
+            os = null;
+
+        if (macosPlatforms.indexOf(platform) !== -1) {
+            os = "MacOS";
+        } else if (iosPlatforms.indexOf(platform) !== -1) {
+            os = "IOS";
+        } else if (windowsPlatforms.indexOf(platform) !== -1) {
+            os = "Windows";
+        } else if (/Android/.test(userAgent)) {
+            os = "Android";
+        } else if (!os && /Linux/.test(platform)) {
+            os = "Linux";
+        }
+
+        return os;
+    }
+
+    function detectBrowser() {
+        var nAgt = navigator.userAgent;
+
+        if ((verOffset = nAgt.indexOf("OPR")) != -1) {
+            browserName = "Opera";
+        } else if ((verOffset = nAgt.indexOf("Edg")) != -1) {
+            browserName = "MicrosoftEdge";
+        } else if ((verOffset = nAgt.indexOf("MSIE")) != -1) {
+            browserName = "MicrosoftInternetExplorer";
+        } else if ((verOffset = nAgt.indexOf("Chrome")) != -1) {
+            browserName = "Chrome";
+        } else if ((verOffset = nAgt.indexOf("Safari")) != -1) {
+            browserName = "Safari";
+        } else if ((verOffset = nAgt.indexOf("Firefox")) != -1) {
+            browserName = "Firefox";
+        } else if (
+            (nameOffset = nAgt.lastIndexOf(" ") + 1) <
+            (verOffset = nAgt.lastIndexOf("/"))
+        ) {
+            browserName = nAgt.substring(nameOffset, verOffset);
+        }
+
+        return browserName;
+    }
+
+    /**
+     * get the 2 localstorage to decide whether call should be sent or not
+     */
+    let referenceID = window.localStorage.getItem("mt-pn-reference-id");
+
+    if (referenceID === null) {
+        pushNotificationJquery.ajax({
+            url: serverURL + "get-user-settings",
+            type: "POST",
+            data: {
+                store: userStoreURL,
+                device: checkDeviceDetails() ? "mobile" : "desktop",
+            },
+            success: function (response) {
+                if (response.status == "success" && response.code == 200) {
+                    startProcess(response.data);
+                }
+            },
+            error: function (error) {
+                console.log(
+                    "MT Push Notifications App speaks: There is some issue",
+                    error
+                );
+            },
+        });
+    }
+
+    function startProcess(payload) {
+        /**
+         * assign popup settings to global variable
+         */
+        popupSettings = payload.popupInfo.popupSettings;
+        /**
+         * Get the stats of popup
+         */
+        let popupCount = window.localStorage.getItem("mt-pn-popup-count");
+        let popupDisAllowBtn = window.localStorage.getItem(
+            "popup-dis-allow-btn-clicked"
+        );
+        let popupAllowBtn = window.localStorage.getItem(
+            "popup-allow-btn-clicked"
+        );
+        /**
+         * Firstly,append Push Notifications widget
+         */
+        if (popupAllowBtn == "1") {
+            /**
+             * User already subscribed so, there is no need to ask further
+             */
+        } else if (
+            popupCount === null ||
+            (popupCount < popupSettings.again_appearing_one_session &&
+                popupDisAllowBtn === null)
+        ) {
+            if (Notification.permission !== "denied") {
+                Notification.permission === "granted"
+                    ? registerServiceWorker("M")
+                    : setTimeout(function () {
+                          pushNotificationJquery("body").append(
+                              payload.popupInfo.popupTemplate
+                          );
+
+                          if (popupCount === null) {
+                              window.localStorage.setItem(
+                                  "mt-pn-popup-count",
+                                  1
+                              );
+                          } else {
+                              popupCount = parseInt(popupCount) + parseInt(1);
+                              window.localStorage.setItem(
+                                  "mt-pn-popup-count",
+                                  popupCount
+                              );
+                          }
+                      }, parseInt(popupSettings.display_time) * 1000);
+            }
+        } else {
+            if (popupSettings.again_appearing_days == 0) {
+                window.localStorage.removeItem("mt-pn-popup-count");
+                window.localStorage.removeItem("popup-dis-allow-btn-clicked");
+            } else {
+                let againAppearingDate = window.localStorage.getItem(
+                    "mt-pn-again-appearing-date"
+                );
+
+                if (againAppearingDate === null) {
+                    handleDisAllowBtn();
+                } else {
+                    let currentDate = giveMeDate();
+                    if (againAppearingDate <= currentDate) {
+                        window.localStorage.removeItem("mt-pn-popup-count");
+                        window.localStorage.removeItem(
+                            "mt-pn-again-appearing-date"
+                        );
+                        window.localStorage.removeItem(
+                            "popup-dis-allow-btn-clicked"
+                        );
+                    }
+                }
+            }
+        }
+    }
+
+    function giveMeDate(daysToAdd = null) {
+        const currentDate = new Date();
+        const currentDayOfMonth = currentDate.getDate();
+        const currentMonth = currentDate.getMonth();
+        const currentYear = currentDate.getFullYear();
+        const dateString =
+            (daysToAdd == null
+                ? currentDayOfMonth
+                : currentDayOfMonth + daysToAdd) +
+            "-" +
+            (currentMonth + 1) +
+            "-" +
+            currentYear;
+        return dateString;
+    }
+
+    function handleDisAllowBtn(action) {
+        /**
+         * remove the widget first
+         */
+        pushNotificationJquery(".pop-model-wrapper-app").remove();
+
+        /**
+         * calculate again appearing time and set
+         */
+        let date = giveMeDate(popupSettings.again_appearing_days);
+        window.localStorage.setItem("mt-pn-again-appearing-date", date);
+    }
+
+    /**
+     * Add onClick event on Allow button
+     */
+    console.log("3.0.2");
+
+    function registerServiceWorker(status) {
+        navigator.serviceWorker
+            .register(
+                `${window.location.origin}/apps/miritech/firebase-messaging-sw.js`
+            )
+            .then((e) => {
+                let n;
+                e.installing
+                    ? (n = e.installing)
+                    : e.waiting
+                    ? (n = e.waiting)
+                    : e.active && (n = e.active);
+
+                n &&
+                    ("activated" === n.state
+                        ? createSubscription(e, status)
+                        : n.addEventListener("statechange", (n) => {
+                              if ("activated" === n.target.state) {
+                                  createSubscription(e, status);
+                              }
+                          }));
+            })
+            .catch((error) => {
+                console.log("MT SW speaks: error while registering SW.", error);
+            });
+    }
+
+    pushNotificationJquery("body").on(
+        "click",
+        "#mt-pn-app-allow-button",
+        function (e) {
+            /**
+             * Lets remove the widget first
+             */
+            pushNotificationJquery(".pop-model-wrapper-app").remove();
+
+            /**
+             * ask for permission here
+             */
+            let currentDevice = detectOS();
+
+            if (currentDevice == "IOS") {
+                //Currently, Push Notification not supoorted in IOS
+            } else {
+                Notification.requestPermission().then((permission) => {
+                    if (permission === "granted") {
+                        registerServiceWorker("N");
+                    } else {
+                        console.log("permission not granted");
+                    }
+                });
+            }
+        }
+    );
+
+    /**
+     *
+     * @param {*} subscriptionData
+     * Send subscribers details to server
+     */
+    function sendSubscriptionToServer(subscriptionData, status) {
+        pushNotificationJquery.ajax({
+            type: "POST",
+            url: domainURL + "api/store-front/save-device-token",
+            data: {
+                subscriberData: JSON.stringify(subscriptionData),
+                storeURL: shopAddress,
+                operatingSystem: detectOS(),
+                browserName: detectBrowser(),
+                subscriberStatus: status,
+            },
+            cache: false,
+            success: function (response) {
+                if (response.code == 200 && response.status == "success") {
+                    window.localStorage.setItem(
+                        "mt-pn-reference-id",
+                        response.data.reference_id
+                    );
+                    window.localStorage.setItem("popup-allow-btn-clicked", 1);
+                }
+            },
+            error: function (error) {
+                console.log("MT speaks: Error while saving token: ", error);
+            },
+        });
+    }
+
+    function createSubscription(workerRegistration, status) {
+        /**
+         * Lets set the localstorage to clicked, so propmt shoud not appear if he/she already subscribed
+         */
+        var config = {
+            userVisibleOnly: true,
+            applicationServerKey:
+                "BGUUwtjpqFuRsDTSso4JM2Od51vG1sWdULvGQM6d20CIrebUo7Hd3KUJu08ot5BBXwQTi5vFZs-axpOQFZbRNqI",
+        };
+
+        workerRegistration.pushManager
+            .subscribe(config)
+            .then((subscriptions) => {
+                sendSubscriptionToServer(subscriptions, status);
+            })
+            .catch((error) => {
+                error.toString().indexOf("InvalidStateError") >= 0
+                    ? workerRegistration.pushManager
+                          .getSubscription()
+                          .then((currentSubscription) => {
+                              currentSubscription
+                                  .unsubscribe()
+                                  .then((n) => {
+                                      workerRegistration.pushManager
+                                          .subscribe(config)
+                                          .then((secondSubscription) => {
+                                              sendSubscriptionToServer(
+                                                  secondSubscription,
+                                                  status
+                                              );
+                                          })
+                                          .catch((subscriptionError) => {
+                                              console.log(
+                                                  "MT speaks: Error while getting subscription",
+                                                  subscriptionError
+                                              );
+                                          });
+                                  })
+                                  .catch((unSubError) => {
+                                      console.log(
+                                          "MT speaks: Error while unSubscribing.",
+                                          unSubError
+                                      );
+                                  });
+                          })
+                    : console.log(
+                          "MT speaks: error while getting subscription",
+                          error
+                      );
+            });
+    }
+
+    /**
+     * Add onClick event on dis-allow button
+     */
+    pushNotificationJquery("body").on(
+        "click",
+        "#mt-pn-app-dis-allow-button",
+        function (e) {
+            window.localStorage.setItem("popup-dis-allow-btn-clicked", "1");
+            handleDisAllowBtn("dis-allow-btn");
+        }
+    );
+
+    /**
+     * check if campaign expired
+     */
+    function isCampaignExpired() {
+        let expiryDate = window.localStorage.getItem(
+            "mt-pn-campaign-expiry-time"
+        );
+
+        if (expiryDate !== null) {
+            let previousDate = new Date(expiryDate);
+            let currentDate = new Date(calculateExpiryDate(false));
+
+            if (currentDate.getTime() >= previousDate.getTime()) {
+                window.localStorage.removeItem("mt-pn-campaign-expiry-time");
+                window.localStorage.removeItem("mt-pn-redirectedBY");
+                window.localStorage.removeItem("mt-pn-campaignID");
+            }
+        }
+    }
+
+    /**
+     * Carts process starts from here
+     * Add Ajax call detector here
+     */
+    function observeCartChanges() {
+        const cartObserver = new PerformanceObserver((list) => {
+            list.getEntries().forEach((entry) => {
+                const isValidRequestType = ["xmlhttprequest", "fetch"].includes(
+                    entry.initiatorType
+                );
+                const isCartChangeRequest = /\/cart\//.test(entry.name);
+                if (isValidRequestType && isCartChangeRequest) {
+                    isCampaignExpired();
+                    setTimeout(function () {
+                        cartData = getCartDetails();
+                    }, 1000);
+                }
+            });
+        });
+        cartObserver.observe({ entryTypes: ["resource"] });
+    }
+    observeCartChanges();
+
+    /**
+     * get the cart details from shopify
+     */
+    function getCartDetails() {
+        pushNotificationJquery.ajax({
+            url: "/cart.js",
+            type: "GET",
+            dataType: "JSON",
+            success: function (response) {
+                sendCartToServer(response);
+            },
+            error: function (error) {
+                console.log(
+                    "MT speaks: There is some error while fetching cart details from shopify"
+                );
+            },
+        });
+    }
+
+    /**
+     * Send cart data to server
+     */
+    let maxTries = 0;
+    function sendCartToServer(cartData) {
+        let referenceID = window.localStorage.getItem("mt-pn-reference-id");
+        let redirectedBy = window.localStorage.getItem("mt-pn-redirectedBY");
+        let campaignID = window.localStorage.getItem("mt-pn-campaignID");
+
+        /**
+         * Cart items can be empty, add check here
+         */
+        if (cartData.item_count == 0 && maxTries < 2) {
+            console.log("cart items does'nt exist", cartData);
+            getCartDetails();
+            maxTries++;
+            return;
+        }
+
+        if (referenceID !== null) {
+            pushNotificationJquery.ajax({
+                type: "POST",
+                url: serverURL + "save-cart-data",
+                data: {
+                    storeURL: shopAddress,
+                    cartDetails: cartData,
+                    referenceID: referenceID,
+                    capturedBy: redirectedBy === null ? "cart" : redirectedBy,
+                    campaignId: campaignID,
+                },
+                cache: false,
+                success: function (response) {
+                    if (response.code == 200 && response.status == "success") {
+                        console.log("Cart saved successfully");
+                    }
+                },
+                error: function (error) {
+                    console.log("MT Speaks: Error while saving token: ", error);
+                },
+            });
+        }
+    }
+}
+/**
+ * Call function here to execute the script
+ */
+
+function finishInterval() {
+    clearInterval(documentIntervalCheck);
+}
+
+let documentIntervalCheck = setInterval(function () {
+    if (document.readyState === "complete" && $ !== undefined) {
+        mtPushNotificationsApp();
+        finishInterval();
+    }
+}, 1000);
+
+/**
+ * search for redirection URLs
+ */
+function calculateExpiryDate(setDate) {
+    const currentDate = new Date();
+    if (setDate) {
+        currentDate.setDate(currentDate.getDate() + 3);
+    }
+    let currentHours = currentDate.getHours();
+    let currentMinutes = currentDate.getMinutes();
+    let currentSeconds = currentDate.getSeconds();
+    let currentDay = currentDate.getDate();
+    let currentMonth = currentDate.getMonth();
+    let currentYear = currentDate.getFullYear();
+
+    return (
+        currentYear +
+        "-" +
+        (currentMonth + 1) +
+        "-" +
+        currentDay +
+        " " +
+        currentHours +
+        ":" +
+        currentMinutes +
+        ":" +
+        currentSeconds
+    );
+}
+
+function redirectBy() {
+    let urlParams = new URLSearchParams(window.location.search);
+    let campaignName = urlParams.get("campaignTitle");
+    if (campaignName !== null) {
+        let campaignID = urlParams.get("campaignID");
+        window.localStorage.setItem("mt-pn-redirectedBY", campaignName);
+        window.localStorage.setItem("mt-pn-campaignID", campaignID);
+        window.localStorage.setItem(
+            "mt-pn-campaign-expiry-time",
+            calculateExpiryDate(true)
+        );
+    }
+}
+redirectBy();

@@ -1,0 +1,140 @@
+.pop-model-wrapper-app {
+    font-family: inherit;
+    position: fixed;
+    margin: 0.5rem;
+    border-radius: 6px;
+    padding: 1rem;
+    box-shadow: rgba(0, 0, 0, 0.16) 0px 1px 4px;
+    max-width: 490px;
+    width: 100%;
+    background-color: white;
+    z-index: 999;
+}
+.pop-model-wrapper-container {
+    display: flex;
+    justify-content: start;
+    align-items: start;
+    gap: 1rem;
+}
+.pop-model-wrapper-container img {
+    width: 100px;
+    /* height: 60px; */
+    border-radius: 6px;
+}
+.pop-model-wrapper-content h3,
+p {
+    margin: 0;
+}
+.pop-model-wrapper-content h3 {
+    font-size: 15px;
+    font-weight: 600;
+    color: #303030;
+}
+.pop-model-wrapper-content p {
+    font-size: 14px;
+    color: #303030;
+    margin-top: 2px;
+    font-weight: 500;
+}
+.pop-model-btn-container {
+    margin-top: 6px;
+    display: flex;
+    justify-content: end;
+    align-items: center;
+    gap: 0.8rem;
+}
+.pop-model-btn-container .pop-model-custom-btn {
+    display: inline-block;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #303030;
+    text-align: center;
+    vertical-align: middle;
+    user-select: none;
+    background-color: white;
+    border: 1px solid white;
+    border-radius: 0.5rem;
+    padding: 10px 20px;
+    font-size: 1rem;
+    height: 40px;
+    transition: background-color 0.15s ease-in-out;
+    cursor: pointer;
+}
+
+.pop-model-btn-container .pop-model-later-btn {
+    border: 1px solid #80808063;
+}
+.pop-model-btn-container .pop-model-later-btn:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+    color: #000;
+}
+.pop-model-btn-container .pop-model-allow-btn {
+    background-color: #000;
+    color: white;
+}
+
+.mt-pn-app-popup-desktop-top-left {
+    top: 65px;
+    left: 0.5rem;
+}
+.mt-pn-app-popup-desktop-top-center {
+    top: 65px;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.mt-pn-app-popup-desktop-top-right {
+    top: 65px;
+    right: 0.5rem;
+}
+
+.mt-pn-app-popup-desktop-middle-left {
+    top: 50%;
+    transform: translateY(-50%);
+    left: 0.5rem;
+}
+
+.mt-pn-app-popup-desktop-middle-center {
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+
+.mt-pn-app-popup-desktop-middle-right {
+    top: 50%;
+    transform: translateY(-50%);
+    right: 0.5rem;
+}
+.mt-pn-app-popup-desktop-bottom-left {
+    bottom: 1.5rem;
+    left: 0.5rem;
+}
+
+.mt-pn-app-popup-desktop-bottom-center {
+    bottom: 1.5rem;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.mt-pn-app-popup-desktop-bottom-right {
+    bottom: 1.5rem;
+    right: 0.5rem;
+}
+
+.mt-pn-app-popup-mobile-top {
+    top: 65px;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.mt-pn-app-popup-mobile-center {
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+
+.mt-pn-app-popup-mobile-bottom {
+    bottom: 1.5rem;
+    left: 50%;
+    transform: translateX(-50%);
+}
